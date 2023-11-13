@@ -6,7 +6,7 @@
 
 //! # cdp-types
 //!
-//! Provides the necessary infrastructure to read and write [CDP] packets
+//! Provides the necessary infrastructure to read and write CDP (Caption Distribution Packet)
 //!
 //! The reference for this implementation is the `SMPTE 334-2-2007` specification.
 
@@ -458,7 +458,7 @@ impl CDPParser {
         self.sequence
     }
 
-    /// Pop a valid [DTVCCPacket] or None if no packet could be parsed
+    /// Pop a valid [`cea708_types::DTVCCPacket`] or None if no packet could be parsed
     pub fn pop_packet(&mut self) -> Option<cea708_types::DTVCCPacket> {
         self.cc_data_parser.pop_packet()
     }
@@ -487,12 +487,12 @@ impl CDPWriter {
         }
     }
 
-    /// Push a [`DTVCCPacket`] for writing
+    /// Push a [`cea708_types::DTVCCPacket`] for writing
     pub fn push_packet(&mut self, packet: cea708_types::DTVCCPacket) {
         self.cc_data.push_packet(packet)
     }
 
-    /// Push a [`Cea608`] byte pair for writing
+    /// Push a [`cea708_types::Cea608`] byte pair for writing
     pub fn push_cea608(&mut self, cea608: cea708_types::Cea608) {
         self.cc_data.push_cea608(cea608)
     }
@@ -514,7 +514,7 @@ impl CDPWriter {
     }
 
     /// Write the next CDP packet taking the next relevant CEA-608 byte pairs and
-    /// [`DTVCCPacket`]s.
+    /// [`cea708_types::DTVCCPacket`]s.
     pub fn write<W: std::io::Write>(&mut self, w: &mut W) -> Result<(), std::io::Error> {
         let mut len = 7; // header
         if self.time_code.is_some() {
