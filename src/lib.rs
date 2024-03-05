@@ -14,9 +14,10 @@
 extern crate log;
 
 /// Various possible errors when parsing data
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ParserError {
     /// The length of the data does not match the length in the data
+    #[error("The length of the data ({actual}) does not match the advertised expected ({expected}) length")]
     LengthMismatch {
         /// Expected minimum size of the data
         expected: usize,
@@ -24,17 +25,23 @@ pub enum ParserError {
         actual: usize,
     },
     /// Some magic byte/s do not have the correct value
+    #[error("Some magic byte/s do not have the correct value")]
     WrongMagic,
     /// Unrecognied framerate value
+    #[error("The framerate specified is not known by this implementation")]
     UnknownFramerate,
     /// Some 'fixed' bits did not have the correct value
+    #[error("Some fixed bits did not have the correct value")]
     InvalidFixedBits,
     /// CEA-608 bytes were found after CEA-708 bytes
+    #[error("CEA-608 compatibility bytes were found after CEA-708 bytes")]
     Cea608AfterCea708,
     /// Failed to validate the checksum
+    #[error("The computed checksum value does not match the stored checksum value")]
     ChecksumFailed,
     /// Sequence count differs between the header and the footer.  Usually indicates this packet was
     /// spliced together incorrectly.
+    #[error("The sequence count differs between the header and the footer")]
     SequenceCountMismatch,
 }
 
@@ -51,20 +58,7 @@ impl From<cea708_types::ParserError> for ParserError {
     }
 }
 
-impl std::fmt::Display for ParserError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad(&format!("{self:?}"))
-    }
-}
-
-/// An error enum returned when writing data fails
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WriterError {
-    /// Writing would overflow by how many bytes
-    WouldOverflow(usize),
-    /// It is not possible to write to this resource
-    ReadOnly,
-}
+pub use cea708_types::WriterError;
 
 static FRAMERATES: [Framerate; 8] = [
     Framerate {
