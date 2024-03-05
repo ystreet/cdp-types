@@ -9,6 +9,7 @@ keywords = ["multimedia", "captions"]
 categories = ["multimedia::encoding"]
 documentation = "https://docs.rs/cdp-types"
 repository = "https://github.com/ystreet/cdp-types"
+rust-version = "1.65.0"
 
 [dependencies]
 log = "0.4"
