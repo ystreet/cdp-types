@@ -33,7 +33,7 @@ pub enum ParserError {
     Cea608AfterCea708,
     /// Failed to validate the checksum
     ChecksumFailed,
-    /// Sequence count differs between the header and the footer.  Usuall indicates this packet was
+    /// Sequence count differs between the header and the footer.  Usually indicates this packet was
     /// spliced together incorrectly.
     SequenceCountMismatch,
 }
@@ -109,6 +109,7 @@ static FRAMERATES: [Framerate; 8] = [
     },
 ];
 
+/// A framerate as found in a CDP.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Framerate {
     id: u8,
@@ -116,25 +117,31 @@ pub struct Framerate {
     denom: u32,
 }
 
+/// A CDP framerate.
 impl Framerate {
+    /// Create a [`Framerate`] from an identifier as found in a CDP.
     pub fn from_id(id: u8) -> Option<Framerate> {
         FRAMERATES.iter().find(|f| f.id == id).copied()
     }
 
+    /// The identifier for this [`Framerate`] in a CDP.
     pub fn id(&self) -> u8 {
         self.id
     }
 
+    /// The numerator component of this [`Framerate`]
     pub fn numer(&self) -> u32 {
         self.numer
     }
 
+    /// The denominator component of this [`Framerate`]
     pub fn denom(&self) -> u32 {
         self.denom
     }
 }
 
-pub struct Flags {
+/// A set of flags available in a CDP.
+struct Flags {
     time_code: bool,
     cc_data: bool,
     svc_info: bool,
@@ -198,6 +205,7 @@ impl From<Flags> for u8 {
     }
 }
 
+/// A time code as available in a CDP.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeCode {
     hours: u8,
@@ -208,6 +216,7 @@ pub struct TimeCode {
     drop_frame: bool,
 }
 
+/// Parses CDP packets.
 #[derive(Debug, Default)]
 pub struct CDPParser {
     cc_data_parser: cea708_types::CCDataParser,
@@ -446,14 +455,17 @@ impl CDPParser {
         *self = Self::default();
     }
 
+    /// The latest CDP time code that has been parsed
     pub fn time_code(&self) -> Option<TimeCode> {
         self.time_code
     }
 
+    /// The latest CDP framerate that has been parsed
     pub fn framerate(&self) -> Option<Framerate> {
         self.framerate
     }
 
+    /// The latest CDP sequence number that has been parsed
     pub fn sequence(&self) -> u16 {
         self.sequence
     }
@@ -463,6 +475,7 @@ impl CDPParser {
         self.cc_data_parser.pop_packet()
     }
 
+    /// Pop the list of [`cea708_types::Cea608`] contained in this packet
     pub fn cea608(&mut self) -> Option<&[cea708_types::Cea608]> {
         self.cc_data_parser.cea608()
     }
