@@ -1,4 +1,4 @@
-[![Build status](https://github.com/ystreet/cdp-types/workflows/Build/badge.svg?branch=main)](https://github.com/ystreet/cdp-types/actions)
+[![Build status](https://github.com/ystreet/cdp-types/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/ystreet/cdp-types/actions)
 [![Dependencies](https://deps.rs/repo/github/ystreet/cdp-types/status.svg)](https://deps.rs/repo/github/ystreet/cdp-types)
 [![crates.io](https://img.shields.io/crates/v/cdp-types.svg)](https://crates.io/crates/cdp-types)
 [![docs.rs](https://docs.rs/cdp-types/badge.svg)](https://docs.rs/cdp-types)
