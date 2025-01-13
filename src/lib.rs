@@ -10,6 +10,10 @@
 //!
 //! The reference for this implementation is the `SMPTE 334-2-2007` specification.
 
+pub use cea708_types;
+
+mod svc;
+
 #[macro_use]
 extern crate log;
 
@@ -43,6 +47,15 @@ pub enum ParserError {
     /// spliced together incorrectly.
     #[error("The sequence count differs between the header and the footer")]
     SequenceCountMismatch,
+    /// The service information contains conflicting service numbers.
+    #[error("The service descriptor has different values")]
+    ServiceNumberMismatch,
+    /// The service number is not valid.
+    #[error("The service number is not valid")]
+    InvalidServiceNumber,
+    /// The service descriptor contains a different set of flags to the CDP.
+    #[error("The service descriptor contains a different set of flags to the CDP")]
+    ServiceFlagsMismatched,
 }
 
 impl From<cea708_types::ParserError> for ParserError {
@@ -216,6 +229,7 @@ pub struct CDPParser {
     cc_data_parser: cea708_types::CCDataParser,
     time_code: Option<TimeCode>,
     framerate: Option<Framerate>,
+    service_info: Option<ServiceInfo>,
     sequence: u16,
 }
 
@@ -346,7 +360,7 @@ impl CDPParser {
             None
         };
 
-        if flags.svc_info {
+        let service_info = if flags.svc_info {
             trace!("attempting to parse svc info");
             if data.len() < idx + 2 {
                 return Err(ParserError::LengthMismatch {
@@ -357,18 +371,23 @@ impl CDPParser {
             if data[idx] != Self::SVC_INFO_ID {
                 return Err(ParserError::WrongMagic);
             }
-            idx += 1;
-            let svc_count = data[idx] & 0x0f;
-            idx += 1;
-            if data.len() < idx + 7 * svc_count as usize {
-                return Err(ParserError::LengthMismatch {
-                    expected: idx + 7 * svc_count as usize,
-                    actual: data.len(),
-                });
+            let svc_count = (data[idx + 1] & 0x0f) as usize;
+            let svc_size = 2 + 7 * svc_count;
+            let service_info = ServiceInfo::parse(&data[idx..idx + svc_size])?;
+            if service_info.is_start() != flags.svc_info_start {
+                return Err(ParserError::ServiceFlagsMismatched);
             }
-            // TODO: handle svc_info
-            idx += 7 * svc_count as usize;
-        }
+            if service_info.is_change() != flags.svc_info_change {
+                return Err(ParserError::ServiceFlagsMismatched);
+            }
+            if service_info.is_complete() != flags.svc_info_complete {
+                return Err(ParserError::ServiceFlagsMismatched);
+            }
+            idx += svc_size;
+            Some(service_info)
+        } else {
+            None
+        };
 
         if data.len() < idx + 2 {
             return Err(ParserError::LengthMismatch {
@@ -440,6 +459,7 @@ impl CDPParser {
         self.framerate = Some(framerate);
         self.time_code = time_code;
         self.sequence = sequence_count;
+        self.service_info = service_info;
 
         Ok(())
     }
@@ -464,6 +484,11 @@ impl CDPParser {
         self.sequence
     }
 
+    /// The latest Service Descriptor that has been parsed.
+    pub fn service_info(&self) -> Option<&ServiceInfo> {
+        self.service_info.as_ref()
+    }
+
     /// Pop a valid [`cea708_types::DTVCCPacket`] or None if no packet could be parsed
     pub fn pop_packet(&mut self) -> Option<cea708_types::DTVCCPacket> {
         self.cc_data_parser.pop_packet()
@@ -480,6 +505,7 @@ impl CDPParser {
 pub struct CDPWriter {
     cc_data: cea708_types::CCDataWriter,
     time_code: Option<TimeCode>,
+    service_info: Option<ServiceInfo>,
     frame_rate: Framerate,
     sequence_count: u16,
 }
@@ -489,6 +515,7 @@ impl CDPWriter {
         Self {
             cc_data: cea708_types::CCDataWriter::default(),
             time_code: None,
+            service_info: None,
             frame_rate,
             sequence_count: 0,
         }
@@ -506,6 +533,10 @@ impl CDPWriter {
 
     pub fn set_time_code(&mut self, time_code: Option<TimeCode>) {
         self.time_code = time_code;
+    }
+
+    pub fn set_service_info(&mut self, service_info: Option<ServiceInfo>) {
+        self.service_info = service_info;
     }
 
     /// Set the next packet's sequence count to a specific value
@@ -535,6 +566,9 @@ impl CDPWriter {
         cc_data[1] = 0xe0 | (cc_data[0] & 0x1f);
         cc_data[0] = 0x72;
         len += cc_data.len();
+        if let Some(service) = self.service_info.as_ref() {
+            len += service.byte_len();
+        }
         len += 4; // footer
 
         assert!(len <= u8::MAX as usize);
@@ -542,6 +576,18 @@ impl CDPWriter {
         let mut flags = Flags::CC_DATA_PRESENT | 0x1;
         if self.time_code.is_some() {
             flags |= Flags::TIME_CODE_PRESENT;
+        }
+        if let Some(svc) = self.service_info.as_ref() {
+            flags |= Flags::SVC_INFO_PRESENT;
+            if svc.is_start() {
+                flags |= Flags::SVC_INFO_START;
+            }
+            if svc.is_change() {
+                flags |= Flags::SVC_INFO_CHANGE;
+            }
+            if svc.is_complete() {
+                flags |= Flags::SVC_INFO_COMPLETE;
+            }
         }
 
         let mut checksum: u8 = 0;
@@ -582,6 +628,16 @@ impl CDPWriter {
         }
         w.write_all(&cc_data)?;
 
+        let mut svc_data = vec![];
+        if let Some(service) = self.service_info.as_mut() {
+            service.write(&mut svc_data)?;
+        }
+
+        for v in svc_data.iter() {
+            checksum = checksum.wrapping_add(*v);
+        }
+        w.write_all(&svc_data)?;
+
         let data = [
             0x74,
             ((self.sequence_count & 0xff00) >> 8) as u8,
@@ -599,6 +655,8 @@ impl CDPWriter {
         Ok(())
     }
 }
+
+pub use svc::{ServiceInfo, ServiceEntry, FieldOrService, DigitalServiceEntry};
 
 #[cfg(test)]
 mod test {
@@ -729,22 +787,22 @@ mod test {
                     0x69,
                     0x14,        // cdp_len
                     0x3f,        // framerate
-                    0x20 | 0x01, // flags
+                    0x20 | 0x10 | 0x04 | 0x01, // flags
                     0x12,        // sequence counter
                     0x34,
                     0x73, // svc_info id
-                    0x80 | 0x40 | 0x10 | 0x01,
-                    0x80 | 0x01,
-                    0x01,
-                    0x02,
-                    0x03,
-                    0x04,
-                    0x05,
-                    0x06,
+                    0x80 | 0x40 | 0x10 | 0x01, // reserved | start | change | complete | count
+                    0x80, // reserved | service number
+                    b'e',
+                    b'n',
+                    b'g',
+                    0x40 | 0x3e, // is_digital | reserved | field/service
+                    0x3f, // reader | wide | reserved
+                    0xff, // reserved
                     0x74, // cdp footer
                     0x12,
                     0x34,
-                    0xB3, // checksum
+                    0xbf, // checksum
                 ],
                 sequence_count: 0x1234,
                 time_code: None,
