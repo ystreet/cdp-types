@@ -501,24 +501,17 @@ impl CDPParser {
 }
 
 /// A struct for writing cc_data packets
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CDPWriter {
     cc_data: cea708_types::CCDataWriter,
     time_code: Option<TimeCode>,
     service_info: Option<ServiceInfo>,
-    frame_rate: Framerate,
     sequence_count: u16,
 }
 
 impl CDPWriter {
-    pub fn new(frame_rate: Framerate) -> Self {
-        Self {
-            cc_data: cea708_types::CCDataWriter::default(),
-            time_code: None,
-            service_info: None,
-            frame_rate,
-            sequence_count: 0,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Push a [`cea708_types::DTVCCPacket`] for writing
@@ -553,14 +546,18 @@ impl CDPWriter {
 
     /// Write the next CDP packet taking the next relevant CEA-608 byte pairs and
     /// [`cea708_types::DTVCCPacket`]s.
-    pub fn write<W: std::io::Write>(&mut self, w: &mut W) -> Result<(), std::io::Error> {
+    pub fn write<W: std::io::Write>(
+        &mut self,
+        framerate: Framerate,
+        w: &mut W,
+    ) -> Result<(), std::io::Error> {
         let mut len = 7; // header
         if self.time_code.is_some() {
             len += 5;
         }
         let mut cc_data = Vec::new();
         self.cc_data.write(
-            cea708_types::Framerate::new(self.frame_rate.numer(), self.frame_rate.denom()),
+            cea708_types::Framerate::new(framerate.numer(), framerate.denom()),
             &mut cc_data,
         )?;
         cc_data[1] = 0xe0 | (cc_data[0] & 0x1f);
@@ -595,7 +592,7 @@ impl CDPWriter {
             0x96,
             0x69,
             (len & 0xff) as u8,
-            self.frame_rate.id << 4 | 0x0f,
+            framerate.id << 4 | 0x0f,
             flags,
             ((self.sequence_count & 0xff00) >> 8) as u8,
             (self.sequence_count & 0xff) as u8,
@@ -656,7 +653,7 @@ impl CDPWriter {
     }
 }
 
-pub use svc::{ServiceInfo, ServiceEntry, FieldOrService, DigitalServiceEntry};
+pub use svc::{DigitalServiceEntry, FieldOrService, ServiceEntry, ServiceInfo};
 
 #[cfg(test)]
 mod test {
@@ -785,21 +782,21 @@ mod test {
                 data: &[
                     0x96, // magic
                     0x69,
-                    0x14,        // cdp_len
-                    0x3f,        // framerate
+                    0x14,                      // cdp_len
+                    0x3f,                      // framerate
                     0x20 | 0x10 | 0x04 | 0x01, // flags
-                    0x12,        // sequence counter
+                    0x12,                      // sequence counter
                     0x34,
-                    0x73, // svc_info id
+                    0x73,                      // svc_info id
                     0x80 | 0x40 | 0x10 | 0x01, // reserved | start | change | complete | count
-                    0x80, // reserved | service number
+                    0x80,                      // reserved | service number
                     b'e',
                     b'n',
                     b'g',
                     0x40 | 0x3e, // is_digital | reserved | field/service
-                    0x3f, // reader | wide | reserved
-                    0xff, // reserved
-                    0x74, // cdp footer
+                    0x3f,        // reader | wide | reserved
+                    0xff,        // reserved
+                    0x74,        // cdp footer
                     0x12,
                     0x34,
                     0xbf, // checksum
@@ -956,7 +953,7 @@ mod test {
         test_init_log();
         for test_data in WRITE_CDP.iter() {
             info!("writing {test_data:?}");
-            let mut writer = CDPWriter::new(test_data.framerate);
+            let mut writer = CDPWriter::new();
             for cdp_data in test_data.cdp_data.iter() {
                 let mut packet_iter = cdp_data.packets.iter();
                 if let Some(packet_data) = packet_iter.next() {
@@ -976,7 +973,7 @@ mod test {
                 writer.set_time_code(cdp_data.time_code);
                 writer.set_sequence_count(cdp_data.sequence_count);
                 let mut written = vec![];
-                writer.write(&mut written).unwrap();
+                writer.write(test_data.framerate, &mut written).unwrap();
                 assert_eq!(cdp_data.data, &written);
             }
         }
