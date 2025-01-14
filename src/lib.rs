@@ -501,12 +501,26 @@ impl CDPParser {
 }
 
 /// A struct for writing cc_data packets
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CDPWriter {
     cc_data: cea708_types::CCDataWriter,
     time_code: Option<TimeCode>,
     service_info: Option<ServiceInfo>,
     sequence_count: u16,
+}
+
+impl Default for CDPWriter {
+    fn default() -> Self {
+        let mut cc_data = cea708_types::CCDataWriter::default();
+        cc_data.set_output_padding(true);
+        cc_data.set_output_cea608_padding(true);
+        Self {
+            cc_data,
+            time_code: None,
+            service_info: None,
+            sequence_count: 0,
+        }
+    }
 }
 
 impl CDPWriter {
@@ -570,7 +584,7 @@ impl CDPWriter {
 
         assert!(len <= u8::MAX as usize);
 
-        let mut flags = Flags::CC_DATA_PRESENT | 0x1;
+        let mut flags = Flags::CC_DATA_PRESENT | Flags::CAPTION_SERVICE_ACTIVE | 0x1;
         if self.time_code.is_some() {
             flags |= Flags::TIME_CODE_PRESENT;
         }
@@ -867,10 +881,10 @@ mod test {
             cdp_data: &[CDPPacketData {
                 data: &[
                     0x96,
-                    0x69,               // magic
-                    0x18,               // cdp_len
-                    0x3f,               //framerate
-                    0x80 | 0x40 | 0x01, // flags
+                    0x69,                      // magic
+                    0x5A,                      // cdp_len
+                    0x3f,                      //framerate
+                    0x80 | 0x40 | 0x02 | 0x01, // flags
                     0x12,
                     0x34,        // sequence counter
                     0x71,        // time code id
@@ -879,17 +893,83 @@ mod test {
                     0x80 | 0x57, // seconds
                     0x80 | 0x18, // frames
                     0x72,        // cc_data id
-                    0xe0 | 0x02,
+                    0xe0 | 0x18,
+                    0xF8,
+                    0x80,
+                    0x80,
+                    0xF9,
+                    0x80,
+                    0x80,
                     0xFF,
                     0x02,
                     0x21,
                     0xFE,
                     0x41,
                     0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
                     0x74, // footer
                     0x12,
                     0x34,
-                    0xA4, //checksum
+                    0xD1, //checksum
                 ],
                 sequence_count: 0x1234,
                 time_code: Some(TimeCode {
@@ -916,23 +996,89 @@ mod test {
                 data: &[
                     0x96, // magic
                     0x69,
-                    0x13,        // cdp_len
-                    0x3f,        // framerate
-                    0x40 | 0x01, // flags
-                    0x34,        // sequence counter
+                    0x55,               // cdp_len
+                    0x3f,               // framerate
+                    0x40 | 0x02 | 0x01, // flags
+                    0x34,               // sequence counter
                     0x12,
                     0x72,        // cc_data id
-                    0xe0 | 0x02, // cc_count
+                    0xe0 | 0x18, // cc_count
+                    0xF8,
+                    0x80,
+                    0x80,
+                    0xF9,
+                    0x80,
+                    0x80,
                     0xFF,
                     0x02,
                     0x21,
                     0xFE,
                     0x41,
                     0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
+                    0xFA,
+                    0x00,
+                    0x00,
                     0x74, // cdp footer
                     0x34,
                     0x12,
-                    0xB9, // checksum
+                    0xE6, // checksum
                 ],
                 sequence_count: 0x3412,
                 time_code: None,
