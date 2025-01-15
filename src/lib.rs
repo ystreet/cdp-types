@@ -1128,11 +1128,12 @@ mod test {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use once_cell::sync::Lazy;
-
-    static TRACING: Lazy<()> = Lazy::new(env_logger::init);
+    use std::sync::OnceLock;
 
     pub fn test_init_log() {
-        Lazy::force(&TRACING);
+        static TRACING: OnceLock<()> = OnceLock::new();
+        TRACING.get_or_init(|| {
+            env_logger::init();
+        });
     }
 }
