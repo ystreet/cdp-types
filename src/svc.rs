@@ -5,6 +5,7 @@
 // copied, modified, or distributed except according to those terms.
 
 use crate::ParserError;
+use crate::WriterError;
 
 #[derive(Debug, PartialEq, Eq, Default, Clone)]
 pub struct ServiceInfo {
@@ -127,8 +128,12 @@ impl ServiceInfo {
     }
 
     /// Add a service to this Service Information block.
-    pub fn add_service(&mut self, service: ServiceEntry) {
+    pub fn add_service(&mut self, service: ServiceEntry) -> Result<(), WriterError> {
+        if self.services.len() >= 15 {
+            return Err(WriterError::WouldOverflow(1));
+        }
         self.services.push(service);
+        Ok(())
     }
 
     /// The length in bytes of this Service Information.
@@ -412,5 +417,25 @@ mod test {
             debug!("parsed service {service:?}");
             assert_eq!(service, svc.service_info);
         }
+    }
+
+    #[test]
+    fn add_service_overflow() {
+        test_init_log();
+
+        let mut info = ServiceInfo::default();
+        let lang_tag = [b'e', b'n', b'g'];
+        for i in 0..15 {
+            let entry = ServiceEntry::new(
+                lang_tag,
+                FieldOrService::Service(DigitalServiceEntry::new(i, false, false)),
+            );
+            info.add_service(entry).unwrap();
+        }
+        let entry = ServiceEntry::new(
+            lang_tag,
+            FieldOrService::Service(DigitalServiceEntry::new(1, false, false)),
+        );
+        assert_eq!(info.add_service(entry), Err(WriterError::WouldOverflow(1)));
     }
 }
