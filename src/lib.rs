@@ -228,6 +228,70 @@ pub struct TimeCode {
     drop_frame: bool,
 }
 
+impl TimeCode {
+    /// Construct a new [`TimeCode`] value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use cdp_types::TimeCode;
+    /// let tc = TimeCode::new(1, 2, 3, 4, true, false);
+    /// assert_eq!(tc.hours(), 1);
+    /// assert_eq!(tc.minutes(), 2);
+    /// assert_eq!(tc.seconds(), 3);
+    /// assert_eq!(tc.frames(), 4);
+    /// assert!(tc.field());
+    /// assert!(!tc.drop_frame());
+    /// ```
+    pub fn new(
+        hours: u8,
+        minutes: u8,
+        seconds: u8,
+        frames: u8,
+        field: bool,
+        drop_frame: bool,
+    ) -> Self {
+        Self {
+            hours,
+            minutes,
+            seconds,
+            frames,
+            field,
+            drop_frame,
+        }
+    }
+
+    /// The hour value of this [`TimeCode`].
+    pub fn hours(&self) -> u8 {
+        self.hours
+    }
+
+    /// The minute value of this [`TimeCode`].
+    pub fn minutes(&self) -> u8 {
+        self.minutes
+    }
+
+    /// The second value of this [`TimeCode`].
+    pub fn seconds(&self) -> u8 {
+        self.seconds
+    }
+
+    /// The frame value of this [`TimeCode`].
+    pub fn frames(&self) -> u8 {
+        self.frames
+    }
+
+    /// The field value of this [`TimeCode`].
+    pub fn field(&self) -> bool {
+        self.field
+    }
+
+    /// The drop frame value of this [`TimeCode`].
+    pub fn drop_frame(&self) -> bool {
+        self.drop_frame
+    }
+}
+
 pub use parser::CDPParser;
 pub use svc::{DigitalServiceEntry, FieldOrService, ServiceEntry, ServiceInfo};
 pub use writer::CDPWriter;
