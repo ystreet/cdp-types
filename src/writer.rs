@@ -6,7 +6,91 @@
 
 use crate::{Flags, Framerate, ServiceInfo, TimeCode};
 
-/// A struct for writing cc_data packets
+/// A struct for writing a stream of CDPs
+///
+/// # Examples
+///
+/// ```
+/// # use cdp_types::*;
+/// use cdp_types::cea708_types::{Cea608, DTVCCPacket, Service, tables};
+///
+/// let mut writer = CDPWriter::new();
+/// writer.set_sequence_count(3);
+/// let mut packet = DTVCCPacket::new(0);
+/// let mut service = Service::new(1);
+/// service.push_code(&tables::Code::LatinCapitalA).unwrap();
+/// packet.push_service(service).unwrap();
+/// writer.push_packet(packet);
+///
+/// writer.push_cea608(Cea608::Field1(0x41, 0x80));
+///
+/// writer.set_time_code(Some(TimeCode::new(1, 2, 3, 4, true, false)));
+///
+/// let mut service_info = ServiceInfo::default();
+/// service_info.set_start(true);
+/// service_info.set_complete(true);
+/// let entry = ServiceEntry::new([b'e', b'n', b'g'], FieldOrService::Field(true));
+/// service_info.add_service(entry);
+/// let entry = ServiceEntry::new(
+///     [b'e', b'n', b'g'],
+///     FieldOrService::Service(DigitalServiceEntry::new(1, false, true))
+/// );
+/// service_info.add_service(entry);
+/// writer.set_service_info(Some(service_info));
+///
+/// let framerate = Framerate::from_id(4).unwrap();
+/// let mut data = vec![];
+/// writer.write(framerate, &mut data).unwrap();
+///
+/// let expected = [
+///     0x96, 0x69,         // magic
+///     0x5e,               // CDP length
+///     0x4f,               // framerate
+///     0xf7,               // flags
+///     0x00, 0x03,         // sequence counter
+///     0x71,               // time code start
+///     0xc1,               // hours
+///     0x82,               // minutes
+///     0x83,               // seconds
+///     0x04,               // frames
+///     0x72,               // cc_data id
+///     0xf4,               // cc_data count
+///     0xfc, 0x41, 0x80,   // CEA-608 field 1
+///     0xf9, 0x80, 0x80,   // CEA-608 field 2
+///     0xff, 0x02, 0x21,   // CEA-708 start
+///     0xfe, 0x41, 0x00,   // CEA-708 continued
+///     0xfa, 0x00, 0x00,   // CEA-708 padding
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0xfa, 0x00, 0x00,   // .
+///     0x73,               // service info id
+///     0xd2,               // start | change | complete | count
+///     0x80,               // service no
+///     b'e', b'n', b'g',   // language
+///     0x7e,               // is_digital | ignored
+///     0x3f, 0xff,         // ignored | reserved
+///     0x81,               // service no
+///     b'e', b'n', b'g',   // language
+///     0xc1,               // is_digital | service no
+///     0x7f, 0xff,         // easy_reader | wide_aspect_ratio | reserved
+///     0x74,               // footer id
+///     0x00, 0x03,         // sequence counter
+///     0xd6,               // checksum
+/// ];
+/// assert_eq!(&data, &expected);
+/// ```
 #[derive(Debug)]
 pub struct CDPWriter {
     cc_data: cea708_types::CCDataWriter,
