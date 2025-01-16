@@ -7,6 +7,75 @@
 use crate::{Flags, Framerate, ParserError, ServiceInfo, TimeCode};
 
 /// Parses CDP packets.
+///
+/// # Examples
+///
+/// ```
+/// # use cdp_types::*;
+/// # use cdp_types::cea708_types::Cea608;
+/// let mut parser = CDPParser::new();
+/// let data = [
+///     0x96, 0x69,                // magic
+///     0x27,                      // cdp_len
+///     0x3f,                      // framerate
+///     0x80 | 0x40 | 0x20 | 0x10 | 0x04 | 0x02 | 0x01, // flags
+///     0x12, 0x34,                // sequence counter
+///     0x71,                      // time code id
+///     0xc0 | 0x17,               // hours
+///     0x80 | 0x59,               // minutes
+///     0x80 | 0x57,               // seconds
+///     0x80 | 0x18,               // frames
+///     0x72,                      // cc_data id
+///     0xe0 | 0x04,               // cc_count
+///     0xFC, 0x20, 0x41,          // CEA608 field 1
+///     0xFD, 0x42, 0x43,          // CEA608 field 2
+///     0xFF, 0x02, 0x21,          // start CEA708 data
+///     0xFE, 0x41, 0x00,
+///     0x73,                      // svc_info id
+///     0x80 | 0x40 | 0x10 | 0x01, // reserved | start | change | complete | count
+///     0x80,                      // reserved | service number
+///     b'e', b'n', b'g',          // language
+///     0x40 | 0x3e,               // is_digital | reserved | field/service
+///     0x3f,                      // reader | wide | reserved
+///     0xff,                      // reserved
+///     0x74,                      // cdp footer
+///     0x12, 0x34,                // sequence counter
+///     0xc4,                      // checksum
+/// ];
+/// parser.parse(&data).unwrap();
+///
+/// assert_eq!(parser.sequence(), 0x1234);
+/// assert_eq!(parser.framerate(), Framerate::from_id(0x3));
+///
+/// // Service information
+/// let service_info = parser.service_info().unwrap();
+/// assert!(service_info.is_start());
+/// assert!(!service_info.is_change());
+/// assert!(service_info.is_complete());
+/// let entries = service_info.services();
+/// assert_eq!(entries[0].language(), [b'e', b'n', b'g']);
+/// let FieldOrService::Field(field) = entries[0].service() else {
+///     unreachable!();
+/// };
+/// assert!(field);
+///
+/// // Time code information
+/// let time_code = parser.time_code().unwrap();
+/// assert_eq!(time_code.hours(), 17);
+/// assert_eq!(time_code.minutes(), 59);
+/// assert_eq!(time_code.seconds(), 57);
+/// assert_eq!(time_code.frames(), 18);
+/// assert!(time_code.field());
+/// assert!(time_code.drop_frame());
+///
+/// // CEA-708 cc_data
+/// let packet = parser.pop_packet().unwrap();
+/// assert_eq!(packet.sequence_no(), 0);
+///
+/// // CEA-608 data
+/// let cea608 = parser.cea608().unwrap();
+/// assert_eq!(cea608, &[Cea608::Field1(0x20, 0x41), Cea608::Field2(0x42, 0x43)]);
+/// ```
 #[derive(Debug)]
 pub struct CDPParser {
     cc_data_parser: cea708_types::CCDataParser,
