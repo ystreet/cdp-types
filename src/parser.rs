@@ -7,13 +7,27 @@
 use crate::{Flags, Framerate, ParserError, ServiceInfo, TimeCode};
 
 /// Parses CDP packets.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CDPParser {
     cc_data_parser: cea708_types::CCDataParser,
     time_code: Option<TimeCode>,
     framerate: Option<Framerate>,
     service_info: Option<ServiceInfo>,
     sequence: u16,
+}
+
+impl Default for CDPParser {
+    fn default() -> Self {
+        let mut cc_data_parser = cea708_types::CCDataParser::default();
+        cc_data_parser.handle_cea608();
+        Self {
+            cc_data_parser,
+            time_code: None,
+            framerate: None,
+            service_info: None,
+            sequence: 0,
+        }
+    }
 }
 
 impl CDPParser {
@@ -288,9 +302,9 @@ mod test {
     use super::*;
     use crate::tests::*;
     use crate::*;
-    use cea708_types::tables;
+    use cea708_types::{tables, Cea608};
 
-    static PARSE_CDP: [TestCCData; 4] = [
+    static PARSE_CDP: [TestCCData; 5] = [
         // simple packet with cc_data and a time code
         TestCCData {
             framerate: FRAMERATES[2],
@@ -427,6 +441,37 @@ mod test {
                 time_code: None,
                 packets: &[],
                 cea608: &[],
+            }],
+        },
+        // simple packet with CEA-608 data
+        TestCCData {
+            framerate: FRAMERATES[2],
+            cdp_data: &[CDPPacketData {
+                data: &[
+                    0x96, // magic
+                    0x69,
+                    0x13,        // cdp_len
+                    0x3f,        // framerate
+                    0x40 | 0x01, // flags
+                    0x12,        // sequence counter
+                    0x34,
+                    0x72,        // cc_data id
+                    0xe0 | 0x02, // cc_count
+                    0xFC,
+                    0x20,
+                    0x41,
+                    0xFD,
+                    0x42,
+                    0x80,
+                    0x74, // cdp footer
+                    0x12,
+                    0x34,
+                    0xFE, // checksum
+                ],
+                sequence_count: 0x1234,
+                time_code: None,
+                packets: &[],
+                cea608: &[Cea608::Field1(0x20, 0x41), Cea608::Field2(0x42, 0x80)],
             }],
         },
     ];
