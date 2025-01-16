@@ -3,24 +3,22 @@ use libfuzzer_sys::fuzz_target;
 
 use cdp_types::{CDPParser, CDPWriter};
 
-use once_cell::sync::Lazy;
+use std::sync::OnceLock;
 
-#[macro_use]
-extern crate log;
+use log::info;
 
 pub fn debug_init() {
-    static TRACING: Lazy<()> = Lazy::new(|| {
+    static TRACING: OnceLock<()> = OnceLock::new();
+    TRACING.get_or_init(|| {
         env_logger::init()
     });
-
-    Lazy::force(&TRACING);
 }
 
 fuzz_target!(|data: &[u8]| {
     debug_init();
     let mut parser = CDPParser::new();
     if let Ok(_) = parser.parse(data) {
-        let mut writer = CDPWriter::new(parser.framerate().unwrap());
+        let mut writer = CDPWriter::new();
         while let Some(p) = parser.pop_packet() {
             info!("parsed {p:?}");
             writer.push_packet(p);
@@ -32,6 +30,6 @@ fuzz_target!(|data: &[u8]| {
         }
         writer.set_time_code(parser.time_code());
         let mut written = vec![];
-        let _ = writer.write(&mut written);
+        let _ = writer.write(parser.framerate().unwrap(), &mut written);
     }
 });
