@@ -65,6 +65,7 @@ impl CDPWriter {
         self.cc_data.flush();
         self.time_code = None;
         self.sequence_count = 0;
+        self.service_info = None;
     }
 
     /// Write the next CDP packet taking the next relevant CEA-608 byte pairs and
