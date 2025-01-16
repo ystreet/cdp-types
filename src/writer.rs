@@ -30,6 +30,7 @@ impl Default for CDPWriter {
 }
 
 impl CDPWriter {
+    /// Construct a new [`CDPWriter`].
     pub fn new() -> Self {
         Self::default()
     }
@@ -44,10 +45,12 @@ impl CDPWriter {
         self.cc_data.push_cea608(cea608)
     }
 
+    /// Set the optional time code to use for the next CDP packet that is generated.
     pub fn set_time_code(&mut self, time_code: Option<TimeCode>) {
         self.time_code = time_code;
     }
 
+    /// Set the optional [`ServiceInfo`] for the next CDP packet that is generated.
     pub fn set_service_info(&mut self, service_info: Option<ServiceInfo>) {
         self.service_info = service_info;
     }

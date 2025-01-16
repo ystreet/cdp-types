@@ -5,6 +5,7 @@
 // copied, modified, or distributed except according to those terms.
 
 #![deny(missing_debug_implementations)]
+#![deny(missing_docs)]
 
 //! # cdp-types
 //!
