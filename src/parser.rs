@@ -239,6 +239,12 @@ impl CDPParser {
             }
             let svc_count = (data[idx + 1] & 0x0f) as usize;
             let svc_size = 2 + 7 * svc_count;
+            if data.len() < idx + svc_size {
+                return Err(ParserError::LengthMismatch {
+                    expected: idx + svc_size,
+                    actual: data.len(),
+                });
+            }
             let service_info = ServiceInfo::parse(&data[idx..idx + svc_size])?;
             if service_info.is_start() != flags.svc_info_start {
                 return Err(ParserError::ServiceFlagsMismatched);
