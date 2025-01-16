@@ -7,6 +7,7 @@
 use crate::ParserError;
 use crate::WriterError;
 
+/// A Closed Caption Service Information block as stored in CDP (SMPTE 334-2).
 #[derive(Debug, PartialEq, Eq, Default, Clone)]
 pub struct ServiceInfo {
     start: bool,
@@ -261,12 +262,15 @@ impl ServiceEntry {
         &self.service
     }
 
+    /// Write this entry into a byte sequence.
     pub fn write<W: std::io::Write>(&mut self, w: &mut W) -> Result<(), std::io::Error> {
         let mut data = [0; 6];
         self.write_into_unchecked(&mut data);
         w.write_all(&data)
     }
 
+    /// Write this entry into a preallocated sequence of bytes. The destination `buf` must have
+    /// a length of at least 6 bytes.
     pub fn write_into_unchecked(&self, data: &mut [u8]) {
         data[0] = self.language[0];
         data[1] = self.language[1];
@@ -305,6 +309,7 @@ pub enum FieldOrService {
     Service(DigitalServiceEntry),
 }
 
+/// A service entry for digital closed captions, i.e. CEA-708 captions.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct DigitalServiceEntry {
     service: u8,
@@ -313,6 +318,7 @@ pub struct DigitalServiceEntry {
 }
 
 impl DigitalServiceEntry {
+    /// Construct a new [`DigitalServiceEntry`]
     pub fn new(service: u8, easy_reader: bool, wide_aspect_ratio: bool) -> Self {
         Self {
             service,
@@ -321,14 +327,17 @@ impl DigitalServiceEntry {
         }
     }
 
+    /// The service number of this entry.
     pub fn service_no(&self) -> u8 {
         self.service
     }
 
+    /// Whether this service is an easy reader type.
     pub fn easy_reader(&self) -> bool {
         self.easy_reader
     }
 
+    /// Whether a wide aspect ratio (16:9) is being used here or not (4:3).
     pub fn wide_aspect_ratio(&self) -> bool {
         self.wide_aspect_ratio
     }
