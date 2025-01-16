@@ -224,7 +224,7 @@ pub struct TimeCode {
     minutes: u8,
     seconds: u8,
     frames: u8,
-    field: u8,
+    field: bool,
     drop_frame: bool,
 }
 

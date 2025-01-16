@@ -88,7 +88,7 @@ impl CDPParser {
             let minutes = ((data[idx] & 0x70) >> 4) * 10 + (data[idx] & 0x0f);
 
             idx += 1;
-            let field = (data[idx] & 0x80) >> 7;
+            let field = ((data[idx] & 0x80) >> 7) > 0;
             let seconds = ((data[idx] & 0x70) >> 4) * 10 + (data[idx] & 0x0f);
 
             idx += 1;
@@ -327,7 +327,7 @@ mod test {
                     minutes: 59,
                     seconds: 57,
                     frames: 18,
-                    field: 1,
+                    field: true,
                     drop_frame: true,
                 }),
                 packets: &[CCPacketData {

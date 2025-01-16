@@ -130,7 +130,7 @@ impl CDPWriter {
                 0x71,
                 0xc0 | ((time_code.hours / 10) << 4) | (time_code.hours % 10),
                 0x80 | ((time_code.minutes / 10) << 4) | (time_code.minutes % 10),
-                ((time_code.field & 0x1) << 7)
+                if time_code.field { 0x80 } else { 0x00 }
                     | ((time_code.seconds / 10) << 4)
                     | (time_code.seconds % 10),
                 if time_code.drop_frame { 0x80 } else { 0x0 }
@@ -286,7 +286,7 @@ mod test {
                     minutes: 59,
                     seconds: 57,
                     frames: 18,
-                    field: 1,
+                    field: true,
                     drop_frame: true,
                 }),
                 packets: &[CCPacketData {
