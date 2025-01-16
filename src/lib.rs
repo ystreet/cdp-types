@@ -132,6 +132,18 @@ pub struct Framerate {
 /// A CDP framerate.
 impl Framerate {
     /// Create a [`Framerate`] from an identifier as found in a CDP.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use cdp_types::Framerate;
+    /// let frame = Framerate::from_id(0x8).unwrap();
+    /// assert_eq!(frame.id(), 0x8);
+    /// assert_eq!(frame.numer(), 60);
+    /// assert_eq!(frame.denom(), 1);
+    ///
+    /// assert!(Framerate::from_id(0x0).is_none());
+    /// ```
     pub fn from_id(id: u8) -> Option<Framerate> {
         FRAMERATES.iter().find(|f| f.id == id).copied()
     }
