@@ -12,7 +12,7 @@ repository = "https://github.com/ystreet/cdp-types"
 rust-version = "1.71.0"
 
 [dependencies]
-cea708-types = "0.3"
+cea708-types = "0.4"
 log = "0.4"
 thiserror = "2"
 
